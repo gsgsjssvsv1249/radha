@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radha — AI Companion</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #ffc7de, #ffeef2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+    h1 {
+      color: #d6336c;
+      font-size: 3em;
+    }
+    img {
+      width: 200px;
+      border-radius: 50%;
+      margin: 1em 0;
+    }
+    button {
+      padding: 1em 2em;
+      background-color: #d6336c;
+      color: white;
+      border: none;
+      border-radius: 30px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #b32759;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hi, I’m Radha 💞</h1>
+  <img src="avatar.png" alt="Radha Avatar" />
+  <button onclick="talkToWaifu()">🎤 Talk to Me</button>
+
+  <script>
+    function talkToWaifu() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.onresult = function(event) {
+        const userInput = event.results[0][0].transcript;
+
+        fetch('/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userInput })
+        })
+        .then(response => response.json())
+        .then(data => {
+          const utterance = new SpeechSynthesisUtterance(data.reply);
+          speechSynthesis.speak(utterance);
+        });
+      };
+      recognition.start();
+    }
+  </script>
+</body>
+</html>
