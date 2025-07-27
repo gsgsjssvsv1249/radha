@@ -51,4 +51,5 @@ ENV PORT=10000
 EXPOSE 10000
 
 # 🚀 Start app with Gunicorn
-CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:$PORT"]
+CMD ["python", "main.py"]
+
