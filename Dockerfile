@@ -1,14 +1,21 @@
-# Start from a base Python image. Let's try a slightly older, very stable one.
-# Python 3.9 or 3.10 are often more compatible with older libraries.
+# Start from a base Python image. Let's stick with 3.10-slim-bookworm
+# as it's generally stable and well-supported.
 FROM python:3.10-slim-bookworm 
 
 # Set noninteractive for apt-get to prevent prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies (PortAudio development files)
-# Use a single RUN command to minimize layers and potential issues
+# Install common build tools and ALL necessary PortAudio/ALSA libraries
+# PyAudio might need more than just portaudio19-dev
 RUN apt-get clean && apt-get update && apt-get install -y \
+    build-essential \
+    libasound-dev \
+    libjack-dev \
     portaudio19-dev \
+    libportaudio2 \
+    libportaudiocpp0 \
+    libsndfile1-dev \
+    ffmpeg \ # ffmpeg is often useful for audio processing, sometimes a hidden dependency
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
@@ -18,8 +25,9 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install Python dependencies
-# Use --no-cache-dir to prevent pip from storing downloaded wheels, further reducing image size
-RUN pip install --no-cache-dir -r requirements.txt
+# Increase pip's default timeout in case of slow downloads
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt --default-timeout=100
 
 # Copy the rest of your application code
 COPY . .
@@ -28,5 +36,4 @@ COPY . .
 EXPOSE 10000 
 
 # Define the command to run your application using Gunicorn (as per your Procfile)
-# This uses the same command you had in your Procfile, but now it's inside the Dockerfile
-CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:$PORT"]
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT"]
