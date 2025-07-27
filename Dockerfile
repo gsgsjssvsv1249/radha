@@ -1,14 +1,10 @@
-# Stage 1: Build Stage - Install dependencies and build wheels
-# Using a specific, stable Python version from Debian's Bookworm distribution
-FROM python:3.10-slim-bookworm as builder
+# 🚧 Stage 1: Builder - Install dependencies and build packages
+FROM python:3.10-slim-bookworm AS builder
 
-# Set environment variable for non-interactive apt-get commands
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies required for building Python packages like PyAudio
-RUN apt-get clean && \
-    apt-get update && \
-    apt-get install -y \
+# 📦 Install build tools and audio libraries
+RUN apt-get update && apt-get install -y \
     build-essential \
     libasound-dev \
     libjack-dev \
@@ -19,46 +15,40 @@ RUN apt-get clean && \
     ffmpeg && \
     rm -rf /var/lib/apt/lists/*
 
-# Set the working directory for the build stage
+# 🔨 Prepare working directory
 WORKDIR /app
 
-# Copy only the requirements.txt file first
-COPY requirements.txt .
-
-# Upgrade pip to the latest version, then install Python dependencies.
-RUN pip install --no-cache-dir --upgrade pip && \
+# 📦 Install Python dependencies
+COPY requirements.txt ./
+RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt --default-timeout=100
 
-# Stage 2: Final Image - A lighter image for running the application
+# 🧊 Stage 2: Runtime - Lean image for deployment
 FROM python:3.10-slim-bookworm
 
-# Set environment variable for non-interactive apt-get commands in final image if needed
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install runtime system dependencies. We should explicitly install these again
-# in the final stage's OS, rather than trying to copy specific .so files which
-# might break if the paths or dependencies aren't perfect.
-RUN apt-get clean && apt-get update && apt-get install -y \
+# 🛠️ Reinstall required runtime libraries
+RUN apt-get update && apt-get install -y \
     libasound2 \
     libjack-jackd2-0 \
     libportaudio2 \
     libportaudiocpp0 \
-    libsndfile1 \
-    && rm -rf /var/lib/apt/lists/*
+    libsndfile1 && \
+    rm -rf /var/lib/apt/lists/*
 
-# Set the working directory in the container
+# 📁 Set runtime working directory
 WORKDIR /app
 
-# Copy Python packages from the build stage
-# THIS IS THE KEY CHANGE: Copy from the standard global site-packages path
-# of the Python image, not Render's internal path.
+# ⛓️ Copy installed Python packages from builder
 COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 
-# Copy your application code
+# 📂 Copy app code
 COPY . .
 
-# Expose the port your Flask app will listen on
+# 🌐 Expose port expected by Render
+ENV PORT=10000
 EXPOSE 10000
 
-# Define the command to run your application using Gunicorn
+# 🚀 Start app with Gunicorn
 CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:$PORT"]
